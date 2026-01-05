@@ -22,6 +22,9 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:19190")
         .await
         .unwrap();
+
+    println!("Server running on http://0.0.0.0:19190");
+
     axum::serve(listener, app).await.unwrap();
 }
 
