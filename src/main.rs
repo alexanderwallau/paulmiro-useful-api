@@ -39,8 +39,13 @@ async fn mensatoshi(cache_state: &State<Cache>) -> String {
         }
         _ => {
             let url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur";
-            // We use reqwest here. Since Rocket 0.5 runs on tokio, this works.
-            let response = match reqwest::get(url).await {
+            let user_agent = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+            let client = match reqwest::Client::builder().user_agent(user_agent).build() {
+                Ok(client) => client,
+                Err(_) => return "Error creating HTTP client".to_string(),
+            };
+
+            let response = match client.get(url).send().await {
                 Ok(response) => response,
                 Err(_) => return "Error fetching data from CoinGecko".to_string(),
             };
