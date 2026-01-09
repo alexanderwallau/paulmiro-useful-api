@@ -1,13 +1,10 @@
-use axum::debug_handler;
-use axum::{Router, routing::get};
-use lazy_static::lazy_static;
+#[macro_use]
+extern crate rocket;
+
+use rocket::State;
+use rocket::tokio::sync::Mutex;
 use serde::Deserialize;
 use std::time::{Duration, Instant};
-use tokio::sync::Mutex;
-
-lazy_static! {
-    static ref CACHE: Mutex<Option<SatoshiPriceCache>> = Mutex::new(None);
-}
 
 #[derive(Clone, Copy)]
 struct SatoshiPriceCache {
@@ -25,31 +22,16 @@ struct Bitcoin {
     eur: f64,
 }
 
-#[tokio::main]
-async fn main() {
-    // build our application with two routes
-    let app = Router::new()
-        .route("/", get(hello_handler))
-        .route("/mensatoshi", get(mensatoshi_handler));
+type Cache = Mutex<Option<SatoshiPriceCache>>;
 
-    let port = std::env::var("USEFUL_API_PORT").unwrap_or_else(|_| "3000".to_string());
-    let addr = format!("0.0.0.0:{}", port);
-
-    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-
-    println!("Server running on http://{}", addr);
-
-    axum::serve(listener, app).await.unwrap();
+#[get("/")]
+fn hello() -> &'static str {
+    "Hello, World!"
 }
 
-#[debug_handler]
-async fn hello_handler() -> String {
-    "Hello, World!".to_string()
-}
-
-#[debug_handler]
-async fn mensatoshi_handler() -> String {
-    let mut cache = CACHE.lock().await;
+#[get("/mensatoshi")]
+async fn mensatoshi(cache_state: &State<Cache>) -> String {
+    let mut cache = cache_state.lock().await;
 
     let satoshi_per_eur = match *cache {
         Some(price_cache) if price_cache.time.elapsed() < Duration::from_secs(10) => {
@@ -57,6 +39,7 @@ async fn mensatoshi_handler() -> String {
         }
         _ => {
             let url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur";
+            // We use reqwest here. Since Rocket 0.5 runs on tokio, this works.
             let response = match reqwest::get(url).await {
                 Ok(response) => response,
                 Err(_) => return "Error fetching data from CoinGecko".to_string(),
@@ -82,8 +65,24 @@ async fn mensatoshi_handler() -> String {
 
     let mensa_price_eur = 1.20; // TOOO: fetch dynamically
     let mensasatoshi = mensa_price_eur * satoshi_per_eur;
-    return format!(
+    format!(
         "Der Mensa-Eintopf kostet aktuell {} Satoshi.",
         mensasatoshi.round()
-    );
+    )
+}
+
+#[launch]
+fn rocket() -> _ {
+    let port = std::env::var("USEFUL_API_PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(3000);
+
+    let config = rocket::Config::figment()
+        .merge(("port", port))
+        .merge(("address", "0.0.0.0"));
+
+    rocket::custom(config)
+        .manage(Mutex::new(None::<SatoshiPriceCache>))
+        .mount("/", routes![hello, mensatoshi])
 }
