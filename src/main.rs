@@ -1,5 +1,5 @@
 use axum::debug_handler;
-use axum::{Router, routing::get};
+use axum::{Router, routing::get, extract::Query};
 use lazy_static::lazy_static;
 use serde::Deserialize;
 use std::time::{Duration, Instant};
@@ -25,12 +25,18 @@ struct Bitcoin {
     eur: f64,
 }
 
+#[derive(Deserialize)]
+struct SatoshiQuery {
+    satoshi: f64,
+}
+
 #[tokio::main]
 async fn main() {
     // build our application with two routes
     let app = Router::new()
         .route("/", get(hello_handler))
-        .route("/mensatoshi", get(mensatoshi_handler));
+        .route("/mensatoshi", get(mensatoshi_handler))
+        .route("/congressbeer", get(congressbeer_handler));
 
     // run it with hyper on localhost:3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:19190")
@@ -86,4 +92,15 @@ async fn mensatoshi_handler() -> String {
         "Der Mensa-Eintopf kostet aktuell {} Satoshi.",
         mensasatoshi.round()
     );
+}
+
+#[debug_handler]
+async fn congressbeer_handler(Query(params): Query<SatoshiQuery>) -> String {
+    const CONGRESSBEER_SATOSHI: f64 = 69.0;
+    let congressbeers = (params.satoshi / CONGRESSBEER_SATOSHI).floor() as i64;
+    format!(
+        "{} Satoshi entspricht {} Congressbeers.",
+        params.satoshi,
+        congressbeers
+    )
 }
