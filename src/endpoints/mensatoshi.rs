@@ -29,36 +29,42 @@ pub struct MensaSatoshiData {
     message: String,
 }
 
-#[get("/mensatoshi?<format>")]
-pub async fn mensatoshi(
-    cache_state: &State<Cache>,
-    format: Option<String>,
-) -> ApiResponse<MensaSatoshiData> {
+async fn fetch_price() -> Result<f64, ApiError> {
+    let url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur";
+    let user_agent = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+    let client = reqwest::Client::builder()
+        .user_agent(user_agent)
+        .build()
+        .map_err(|_| ApiError {
+            message: "Error creating HTTP client".to_string(),
+        })?;
+
+    let response = client.get(url).send().await.map_err(|_| ApiError {
+        message: "Error fetching data from CoinGecko".to_string(),
+    })?;
+
+    let data = response
+        .json::<CoinGeckoResponse>()
+        .await
+        .map_err(|_| ApiError {
+            message: "Error deserializing CoinGecko response. Probably rate limited.".to_string(),
+        })?;
+
+    let eur_per_btc = data.bitcoin.eur;
+    let satoshi_per_btc: f64 = 100_000_000.0;
+    Ok(satoshi_per_btc / eur_per_btc)
+}
+
+async fn get_price(cache_state: &State<Cache>) -> Result<f64, ApiError> {
     // First, try to get a read lock.
-    let cache = cache_state.read().await;
-
-    if let Some(price_cache) = *cache {
-        if price_cache.time.elapsed() < Duration::from_secs(10) {
-            let satoshi_per_eur = price_cache.price;
-            let mensa_price_eur = 1.20; // TOOO: fetch dynamically
-            let mensasatoshi = mensa_price_eur * satoshi_per_eur;
-            let rounded_satoshi = mensasatoshi.round();
-            let message = format!(
-                "Der Mensa-Eintopf kostet aktuell {} Satoshi.",
-                rounded_satoshi
-            );
-
-            return match format.as_deref() {
-                Some("json") => ApiResponse::Json(MensaSatoshiData {
-                    satoshi: rounded_satoshi,
-                    message,
-                }),
-                _ => ApiResponse::Plain(message),
-            };
+    {
+        let cache = cache_state.read().await;
+        if let Some(price_cache) = *cache {
+            if price_cache.time.elapsed() < Duration::from_secs(10) {
+                return Ok(price_cache.price);
+            }
         }
     }
-    // Drop the read lock so we can acquire a write lock later.
-    drop(cache);
 
     // If the cache is stale or empty, get a write lock to update it.
     let mut cache = cache_state.write().await;
@@ -67,61 +73,28 @@ pub async fn mensatoshi(
     // while we were waiting for the write lock.
     if let Some(price_cache) = *cache {
         if price_cache.time.elapsed() < Duration::from_secs(10) {
-            let satoshi_per_eur = price_cache.price;
-            let mensa_price_eur = 1.20; // TOOO: fetch dynamically
-            let mensasatoshi = mensa_price_eur * satoshi_per_eur;
-            let rounded_satoshi = mensasatoshi.round();
-            let message = format!(
-                "Der Mensa-Eintopf kostet aktuell {} Satoshi.",
-                rounded_satoshi
-            );
-
-            return match format.as_deref() {
-                Some("json") => ApiResponse::Json(MensaSatoshiData {
-                    satoshi: rounded_satoshi,
-                    message,
-                }),
-                _ => ApiResponse::Plain(message),
-            };
+            return Ok(price_cache.price);
         }
     }
 
-    let url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=eur";
-    let user_agent = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
-    let client = match reqwest::Client::builder().user_agent(user_agent).build() {
-        Ok(client) => client,
-        Err(_) => {
-            return ApiResponse::Error(ApiError {
-                message: "Error creating HTTP client".to_string(),
-            });
-        }
-    };
+    let price = fetch_price().await?;
 
-    let response = match client.get(url).send().await {
-        Ok(response) => response,
-        Err(_) => {
-            return ApiResponse::Error(ApiError {
-                message: "Error fetching data from CoinGecko".to_string(),
-            });
-        }
-    };
-    let satoshi_per_eur = match response.json::<CoinGeckoResponse>().await {
-        Ok(data) => {
-            let eur_per_btc = data.bitcoin.eur;
-            let satoshi_per_btc: f64 = 100_000_000.0;
-            let satoshi_per_eur = satoshi_per_btc / eur_per_btc;
-            *cache = Some(SatoshiPriceCache {
-                price: satoshi_per_eur,
-                time: Instant::now(),
-            });
-            satoshi_per_eur
-        }
-        Err(_) => {
-            return ApiResponse::Error(ApiError {
-                message: "Error deserializing CoinGecko response. Probably rate limited."
-                    .to_string(),
-            });
-        }
+    *cache = Some(SatoshiPriceCache {
+        price,
+        time: Instant::now(),
+    });
+
+    Ok(price)
+}
+
+#[get("/mensatoshi?<format>")]
+pub async fn mensatoshi(
+    cache_state: &State<Cache>,
+    format: Option<String>,
+) -> ApiResponse<MensaSatoshiData> {
+    let satoshi_per_eur = match get_price(cache_state).await {
+        Ok(price) => price,
+        Err(e) => return ApiResponse::Error(e),
     };
 
     let mensa_price_eur = 1.20; // TOOO: fetch dynamically
