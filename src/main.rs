@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate rocket;
 
-use rocket::tokio::sync::Mutex;
+use rocket::tokio::sync::RwLock;
 
 mod endpoints;
 
@@ -24,6 +24,6 @@ fn rocket() -> _ {
         .merge(("address", "0.0.0.0"));
 
     rocket::custom(config)
-        .manage(Mutex::new(None::<SatoshiPriceCache>))
+        .manage(RwLock::new(None::<SatoshiPriceCache>))
         .mount("/", routes![hello, mensatoshi, congressbeer, shark])
 }
