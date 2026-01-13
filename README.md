@@ -2,7 +2,7 @@
 
 ## 🚀 Overview
 
-This is a very useful API that does very useful things. Built with Rust and Axum, it provides endpoints for calculating satoshi-related conversions with a focus on real-world applications like Mensa meals and Congressbeers.
+This is a very useful API that does very useful things. Built with Rust and Rocket, it provides endpoints for calculating satoshi-related conversions with a focus on real-world applications like Mensa meals and Congressbeers.
 
 ## 📡 Endpoints
 
@@ -80,9 +80,9 @@ Request: `GET /congressbeer?satoshi=50`
 
 ## 🛠️ Technical Details
 
-- **Framework:** Axum (Rust)
+- **Framework:** Rocket (Rust)
 - **Runtime:** Tokio
-- **Port:** 19190
+- **Port:** 3000
 - **Host:** 0.0.0.0 (listens on all interfaces)
 
 ## 🚦 Running the Server
@@ -91,10 +91,10 @@ Request: `GET /congressbeer?satoshi=50`
 cargo run
 ```
 
-The server will start on `http://0.0.0.0:19190`
+The server will start on `http://0.0.0.0:3000`
 
 ## 📝 Notes
 
-- The API uses lazy static caching for Bitcoin price data
+- The API uses Rocket's managed state for caching Bitcoin price data
 - CoinGecko API rate limits are handled gracefully
 - All endpoints return plain text responses
