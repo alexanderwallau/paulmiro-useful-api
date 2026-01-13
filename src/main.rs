@@ -5,7 +5,12 @@ use rocket::tokio::sync::Mutex;
 
 mod endpoints;
 
-use endpoints::{hello::hello, mensatoshi::{mensatoshi, SatoshiPriceCache}, congressbeer::congressbeer};
+use endpoints::{
+    congressbeer::congressbeer,
+    hello::hello,
+    mensatoshi::{SatoshiPriceCache, mensatoshi},
+    shark::shark,
+};
 
 #[launch]
 fn rocket() -> _ {
@@ -20,5 +25,5 @@ fn rocket() -> _ {
 
     rocket::custom(config)
         .manage(Mutex::new(None::<SatoshiPriceCache>))
-        .mount("/", routes![hello, mensatoshi, congressbeer])
+        .mount("/", routes![hello, mensatoshi, congressbeer, shark])
 }
