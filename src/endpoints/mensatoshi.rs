@@ -1,6 +1,7 @@
+use crate::endpoints::{ApiError, ApiResponse};
 use rocket::State;
 use rocket::tokio::sync::Mutex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 
 #[derive(Clone, Copy)]
@@ -21,8 +22,14 @@ struct Bitcoin {
     eur: f64,
 }
 
-#[get("/mensatoshi")]
-pub async fn mensatoshi(cache_state: &State<Cache>) -> String {
+#[derive(Serialize)]
+pub struct MensaSatoshiData {
+    satoshi: f64,
+    message: String,
+}
+
+#[get("/mensatoshi?<format>")]
+pub async fn mensatoshi(cache_state: &State<Cache>, format: Option<String>) -> ApiResponse<MensaSatoshiData> {
     let mut cache = cache_state.lock().await;
 
     let satoshi_per_eur = match *cache {
@@ -34,12 +41,20 @@ pub async fn mensatoshi(cache_state: &State<Cache>) -> String {
             let user_agent = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
             let client = match reqwest::Client::builder().user_agent(user_agent).build() {
                 Ok(client) => client,
-                Err(_) => return "Error creating HTTP client".to_string(),
+                Err(_) => {
+                    return ApiResponse::Error(ApiError {
+                        message: "Error creating HTTP client".to_string(),
+                    })
+                }
             };
 
             let response = match client.get(url).send().await {
                 Ok(response) => response,
-                Err(_) => return "Error fetching data from CoinGecko".to_string(),
+                Err(_) => {
+                    return ApiResponse::Error(ApiError {
+                        message: "Error fetching data from CoinGecko".to_string(),
+                    })
+                }
             };
             match response.json::<CoinGeckoResponse>().await {
                 Ok(data) => {
@@ -53,8 +68,10 @@ pub async fn mensatoshi(cache_state: &State<Cache>) -> String {
                     satoshi_per_eur
                 }
                 Err(_) => {
-                    return "Error deserializing CoinGecko response. Probably rate limited."
-                        .to_string();
+                    return ApiResponse::Error(ApiError {
+                        message: "Error deserializing CoinGecko response. Probably rate limited."
+                            .to_string(),
+                    });
                 }
             }
         }
@@ -62,8 +79,17 @@ pub async fn mensatoshi(cache_state: &State<Cache>) -> String {
 
     let mensa_price_eur = 1.20; // TOOO: fetch dynamically
     let mensasatoshi = mensa_price_eur * satoshi_per_eur;
-    format!(
+    let rounded_satoshi = mensasatoshi.round();
+    let message = format!(
         "Der Mensa-Eintopf kostet aktuell {} Satoshi.",
-        mensasatoshi.round()
-    )
+        rounded_satoshi
+    );
+
+    match format.as_deref() {
+        Some("json") => ApiResponse::Json(MensaSatoshiData {
+            satoshi: rounded_satoshi,
+            message,
+        }),
+        _ => ApiResponse::Plain(message),
+    }
 }

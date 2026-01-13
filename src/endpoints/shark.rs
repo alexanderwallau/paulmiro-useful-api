@@ -1,4 +1,12 @@
-use rocket::serde::Deserialize;
+use crate::endpoints::{ApiError, ApiResponse};
+use rocket::serde::{Deserialize, Serialize};
+
+#[derive(Serialize)]
+pub struct SharkData {
+    beeghaj: i32,
+    smolhaj: i32,
+    message: String,
+}
 
 #[derive(Deserialize)]
 struct IkeaResponse {
@@ -43,8 +51,8 @@ struct ClassUnitKey {
     class_unit_code: String,
 }
 
-#[get("/shark")]
-pub async fn shark() -> String {
+#[get("/shark?<format>")]
+pub async fn shark(format: Option<String>) -> ApiResponse<SharkData> {
     let url = "https://api.salesitem.ingka.com/availabilities/ru/de?itemNos=30373588,20540663&expand=StoresList";
     let client = reqwest::Client::new();
 
@@ -55,12 +63,20 @@ pub async fn shark() -> String {
         .await
     {
         Ok(res) => res,
-        Err(_) => return "Error fetching data from Ikea".to_string(),
+        Err(_) => {
+            return ApiResponse::Error(ApiError {
+                message: "Error fetching data from Ikea".to_string(),
+            })
+        }
     };
 
     let data = match response.json::<IkeaResponse>().await {
         Ok(json) => json,
-        Err(_) => return "Error parsing Ikea response".to_string(),
+        Err(_) => {
+            return ApiResponse::Error(ApiError {
+                message: "Error parsing Ikea response".to_string(),
+            })
+        }
     };
 
     let get_quantity = |item_id: &str| -> i32 {
@@ -82,7 +98,15 @@ pub async fn shark() -> String {
     let smolhaj_qty = get_quantity("20540663");
 
     if beeghaj_qty == 0 && smolhaj_qty == 0 {
-        return "Der IKEA Godorf hat aktuell überhaupt keine sharks auf lager :(".to_string();
+        let msg = "Der IKEA Godorf hat aktuell überhaupt keine sharks auf lager :(".to_string();
+        return match format.as_deref() {
+            Some("json") => ApiResponse::Json(SharkData {
+                beeghaj: 0,
+                smolhaj: 0,
+                message: msg,
+            }),
+            _ => ApiResponse::Plain(msg),
+        };
     }
 
     let format_part = |qty: i32, name: &str| -> String {
@@ -107,5 +131,12 @@ pub async fn shark() -> String {
         response_str.push_str(" :D");
     }
 
-    response_str
+    match format.as_deref() {
+        Some("json") => ApiResponse::Json(SharkData {
+            beeghaj: beeghaj_qty,
+            smolhaj: smolhaj_qty,
+            message: response_str,
+        }),
+        _ => ApiResponse::Plain(response_str),
+    }
 }
