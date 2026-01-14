@@ -2,7 +2,7 @@
 
 ## 🚀 Overview
 
-This is a very useful API that does very useful things. Built with Rust and Rocket, it provides endpoints for calculating satoshi-related conversions with a focus on real-world applications like Mensa meals and Congressbeers.
+This is a very useful API that does very useful things. Built with Rust and Rocket, it provides endpoints for calculating satoshi-related conversions with a focus on real-world applications like Mensa meals and Congressbeers, as well as checking stock for our favorite sharks.
 
 ## 📡 Endpoints
 
@@ -25,15 +25,56 @@ Hello, World!
 
 Calculates how many satoshi a Mensa meal costs based on current Bitcoin prices. The price is cached for 10 seconds to avoid rate limiting.
 
-**Response:**
+**Query Parameters:**
+- `format` (optional): Set to `json` to get a JSON response.
+
+**Response (Plain Text):**
 ```
 Der Mensa-Eintopf kostet aktuell 1234 Satoshi.
+```
+
+**Response (JSON):**
+```json
+{
+  "satoshi": 1234.0,
+  "message": "Der Mensa-Eintopf kostet aktuell 1234 Satoshi."
+}
 ```
 
 **Features:**
 - 💰 Fetches real-time Bitcoin prices from CoinGecko API
 - ⚡ Caches results for 10 seconds to optimize performance
 - 🍽️ Uses a fixed Mensa price of €1.20 (TODO: fetch dynamically)
+
+---
+
+### 🦈 Shark Endpoint
+
+**GET** `/shark`
+
+Checks the stock of "beeghaj" (large Blåhaj) and "smolhaj" (small Blåhaj) at IKEA Godorf. The stock data is cached for 5 minutes.
+
+**Query Parameters:**
+- `format` (optional): Set to `json` to get a JSON response.
+
+**Response (Plain Text):**
+```
+Der IKEA Godorf hat aktuell 42 beeghajs und 69 smolhajs auf Lager :D
+```
+
+**Response (JSON):**
+```json
+{
+  "beeghaj": 42,
+  "smolhaj": 69,
+  "message": "Der IKEA Godorf hat aktuell 42 beeghajs und 69 smolhajs auf Lager :D"
+}
+```
+
+**Features:**
+- 🦈 Fetches real-time stock data from IKEA API
+- ⚡ Caches results for 5 minutes to optimize performance
+- 📦 Tracks both sizes of our favorite plushie
 
 ---
 
@@ -82,9 +123,9 @@ Request: `GET /congressbeer?satoshi=50`
 
 The application can be configured using environment variables:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `USEFUL_API_PORT` | The port the server listens on | `3000` |
+| Variable          | Description                    | Default |
+| ----------------- | ------------------------------ | ------- |
+| `USEFUL_API_PORT` | The port the server listens on | `3000`  |
 
 ---
 
@@ -143,9 +184,9 @@ The binary will be available in `./result/bin/useful-api`.
 
 ## 📝 Notes
 
-- The API uses Rocket's managed state for caching Bitcoin price data.
+- The API uses Rocket's managed state and `RwLock` for caching data.
 - CoinGecko API rate limits are handled gracefully.
-- All endpoints return plain text responses.
+- Endpoints support both plain text and JSON responses (via `?format=json`).
 - `0.0.0.0` is used as the bind address, making the server accessible externally.
 
 ## ⚠️ Disclaimer
