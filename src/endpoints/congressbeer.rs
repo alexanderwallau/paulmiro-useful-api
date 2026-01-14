@@ -9,7 +9,8 @@ pub struct CongressBeerData {
 }
 
 #[get("/congressbeer?<satoshi>&<format>")]
-pub fn congressbeer(satoshi: f64, format: Option<String>) -> ApiResponse<CongressBeerData> {
+pub fn congressbeer(satoshi: Option<f64>, format: Option<String>) -> ApiResponse<CongressBeerData> {
+    let satoshi = satoshi.unwrap_or(CONGRESSBEER_SATOSHI);
     let congressbeers = (satoshi / CONGRESSBEER_SATOSHI).floor() as i64;
     let message = format!(
         "{} Satoshi entspricht {} Bier auf dem Congress.",

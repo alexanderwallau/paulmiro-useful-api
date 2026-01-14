@@ -100,17 +100,18 @@ Request: `GET /congressbeer?satoshi=200`
 ```
 *(200 ÷ 69 = 2.89... → floors to 2)*
 
-Request: `GET /congressbeer?satoshi=138`
-```
-138 Satoshi entspricht 2 Bier auf dem Congress.
-```
-*(138 ÷ 69 = 2.0 → exactly 2)*
-
 Request: `GET /congressbeer?satoshi=50`
 ```
 50 Satoshi entspricht 0 Bier auf dem Congress.
 ```
 *(50 ÷ 69 = 0.72... → floors to 0)*
+
+Request: `GET /congressbeer`
+```
+69 Satoshi entspricht 1 Bier auf dem Congress.
+```
+*defaults to the price of one beer*
+
 
 **Features:**
 - 🍺 Calculates Congress-Beers based on the legendary 69 satoshi per beer rate
