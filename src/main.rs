@@ -34,7 +34,6 @@ fn rocket() -> _ {
                 endpoints::teapot::teapot
             ],
         )
-        //.mount("/", routes![openapi_json])
         .mount(
             "/swagger-ui/",
             make_swagger_ui(&SwaggerUIConfig {
