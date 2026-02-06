@@ -14,6 +14,7 @@ use endpoints::{
     mensatoshi::mensatoshi,
     shark::{SharkCache, shark},
     teapot::teapot,
+    openapi::openapi,
 };
 
 #[launch]
@@ -32,6 +33,6 @@ fn rocket() -> _ {
         .manage(RwLock::new(None::<SharkCache>))
         .mount(
             "/",
-            routes![hello, mensatoshi, congressbeer, shark, mensabeer, teapot],
+            routes![hello, mensatoshi, congressbeer, shark, mensabeer, teapot, openapi],
         )
 }
