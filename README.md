@@ -6,6 +6,29 @@ This is a very useful API that does very useful things. Built with Rust and Rock
 
 Interactive API documentation is available via Swagger UI at `/swagger-ui/`.
 
+## 🎉 Contributions
+
+**✨ *We want as many Pull Requests as possible!* ✨**
+
+**EVERY** PR will be merged, *as long as it adheres to these guidelines (in order of importance)*:
+
+- ✅ It is 100% vibe-coded.
+- 🛠️ It compiles.
+- 🛡️ It is not malware.
+
+Things that do not matter (in no particular order):
+
+- 🚫 Code quality *(as long as it compiles)*
+- 📚 Code readability *(no human will ever have to read it)*
+- 💨 Performance *(it's written in rust, so bad performance is impossible)*
+- 🤔 Usefulness to the user *(who could even decide what counts as "useful"?)*
+- 🚀 Scalability *(it runs on my machine, so it will probably scale to a billion users)*
+- 🧪 Test coverage *(untested code is the purest code)*
+- 📖 Documentation *(the code is self-documenting, if you can read it)*
+- 🐛 Error handling *(errors are just unexpected features)*
+- ⏪ Backward compatibility *(if it breaks, they shouldn't have used it)*
+- 🔮 Future-proofing *(tomorrow's problems are for tomorrow's agents)*
+
 ## 📡 Endpoints
 
 ### 🏠 Root Endpoint
