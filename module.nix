@@ -81,17 +81,19 @@ in
         WorkingDirectory = "/var/lib/useful-api";
         StateDirectory = "useful-api";
       };
-      unitConfig = {
-        ReloadPropagatedFrom = "useful-api.path";
-      };
     };
 
-    systemd.paths."useful-api" = {
+    systemd.paths."useful-api-restarter" = {
       description = "Watch for changes in the useful-api build result";
       wantedBy = [ "multi-user.target" ];
       pathConfig = {
         PathChanged = "/var/lib/useful-api/result";
-        Unit = "useful-api.service";
+      };
+    };
+    systemd.services.useful-api-restarter = {
+      description = "Restart useful-api when the build result changes";
+      serviceConfig = {
+        ExecStart = "systemctl restart useful-api.servive";
       };
     };
 
