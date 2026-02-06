@@ -81,7 +81,9 @@ in
         WorkingDirectory = "/var/lib/useful-api";
         StateDirectory = "useful-api";
       };
-      partOf = [ "useful-api.path" ];
+      unitConfig = {
+        ReloadPropagatedFrom = "useful-api.path";
+      };
     };
 
     systemd.paths."useful-api" = {
@@ -117,7 +119,7 @@ in
             cd ..
             nix build "./repo#useful-api" -o result-new
             # Atomically replace the old binary link
-            mv -f result-new result
+            mv -f -T result-new result
           else
             echo "Already up to date."
           fi
