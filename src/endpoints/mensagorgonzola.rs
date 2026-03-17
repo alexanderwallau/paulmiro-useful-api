@@ -8,6 +8,7 @@ use serde::Serialize;
 #[derive(Serialize, JsonSchema)]
 pub struct GorgonzolaData {
     pub has_gorgonzola: bool,
+    pub message: String,
 }
 
 async fn fetch_gorgonzola() -> Result<GorgonzolaData, ApiError> {
@@ -37,17 +38,25 @@ async fn fetch_gorgonzola() -> Result<GorgonzolaData, ApiError> {
         })?;
 
     let has_gorgonzola = body.to_lowercase().contains("gorgonzola");
+    let message = format!(
+        "Die Mensa hat heute {}Gorgonzola im Angebot.",
+        if has_gorgonzola { "" } else { "keinen " }
+    )
+    .replace("  ", " ");
 
-    Ok(GorgonzolaData { has_gorgonzola })
+    Ok(GorgonzolaData {
+        has_gorgonzola,
+        message,
+    })
 }
 
 #[openapi(tag = "Mensa")]
-#[get("/mensa-gorgonzola?<format>")]
-pub async fn mensa_gorgonzola(format: Option<String>) -> ApiResponse<GorgonzolaData> {
+#[get("/mensagorgonzola?<format>")]
+pub async fn mensagorgonzola(format: Option<String>) -> ApiResponse<GorgonzolaData> {
     match fetch_gorgonzola().await {
         Ok(data) => match format.as_deref() {
             Some("json") => ApiResponse::Json(data),
-            _ => ApiResponse::Plain(data.has_gorgonzola.to_string()),
+            _ => ApiResponse::Plain(data.message),
         },
         Err(e) => ApiResponse::Error(e),
     }
