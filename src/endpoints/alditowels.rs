@@ -10,13 +10,19 @@ use serde::Serialize;
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
+#[derive(Serialize, Clone, JsonSchema, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Product {
+    pub name: String,
+    pub link: Option<String>,
+}
+
 #[derive(Serialize, Clone, JsonSchema)]
 pub struct AldiTowelData {
     pub sells_towels: bool,
     pub will_sell_towels: bool,
     pub message: String,
     pub availability: Vec<String>,
-    pub products: Vec<String>,
+    pub products: Vec<Product>,
 }
 
 #[derive(Clone)]
@@ -101,13 +107,14 @@ async fn get_aldi_towel_data() -> Result<AldiTowelData, ApiError> {
     }
 
     let mut raw_availability = HashSet::new();
-    let mut product_names = HashSet::new();
+    let mut product_set = HashSet::new();
     let mut has_products = false;
 
     // Selectors for Aldi's typical structure
     let product_tile_selector = Selector::parse(".product-tile").unwrap();
     let product_title_selector =
         Selector::parse(".product-tile__title, .product-tile__name").unwrap();
+    let product_link_selector = Selector::parse("a.product-tile, .product-tile a").unwrap();
     let availability_selector =
         Selector::parse(".product-tile__availability, .availability-label, .badge--availability")
             .unwrap();
@@ -135,6 +142,7 @@ async fn get_aldi_towel_data() -> Result<AldiTowelData, ApiError> {
 
         for tile in document.select(&product_tile_selector) {
             let mut name_found = false;
+            let mut product_name = String::new();
 
             if let Some(name_element) = tile.select(&product_title_selector).next() {
                 let name = name_element
@@ -145,7 +153,7 @@ async fn get_aldi_towel_data() -> Result<AldiTowelData, ApiError> {
                     .to_string();
                 let name_lower = name.to_lowercase();
                 if keywords.iter().any(|&k| name_lower.contains(k)) {
-                    product_names.insert(name);
+                    product_name = name;
                     has_products = true;
                     name_found = true;
                 }
@@ -153,6 +161,32 @@ async fn get_aldi_towel_data() -> Result<AldiTowelData, ApiError> {
 
             // Only look for availability if this tile is actually a towel
             if name_found {
+                let mut product_link = None;
+                if let Some(link_element) = tile.select(&product_link_selector).next() {
+                    if let Some(href) = link_element.value().attr("href") {
+                        let full_link = if href.starts_with('/') {
+                            format!("https://www.aldi-sued.de{}", href)
+                        } else {
+                            href.to_string()
+                        };
+                        product_link = Some(full_link);
+                    }
+                } else if tile.value().name() == "a" {
+                    if let Some(href) = tile.value().attr("href") {
+                        let full_link = if href.starts_with('/') {
+                            format!("https://www.aldi-sued.de{}", href)
+                        } else {
+                            href.to_string()
+                        };
+                        product_link = Some(full_link);
+                    }
+                }
+
+                product_set.insert(Product {
+                    name: product_name,
+                    link: product_link,
+                });
+
                 if let Some(avail_element) = tile.select(&availability_selector).next() {
                     let avail_text = avail_element
                         .text()
@@ -192,7 +226,10 @@ async fn get_aldi_towel_data() -> Result<AldiTowelData, ApiError> {
                             .unwrap_or(40);
                         let name = sub[..end_idx].trim().trim_end_matches([',', '.']).trim();
                         if name.len() > 5 && name.len() < 100 {
-                            product_names.insert(name.to_string());
+                            product_set.insert(Product {
+                                name: name.to_string(),
+                                link: None,
+                            });
                             has_products = true;
                         }
                         search_pos = absolute_start + end_idx.max(1);
@@ -233,7 +270,7 @@ async fn get_aldi_towel_data() -> Result<AldiTowelData, ApiError> {
     }
     final_availability.sort();
 
-    let mut products: Vec<String> = product_names.into_iter().collect();
+    let mut products: Vec<Product> = product_set.into_iter().collect();
     products.sort();
 
     // Logic for now vs future
@@ -262,7 +299,14 @@ async fn get_aldi_towel_data() -> Result<AldiTowelData, ApiError> {
         };
 
         let product_str = if !products.is_empty() {
-            format!(": {}", products.join(", "))
+            let product_lines: Vec<String> = products
+                .iter()
+                .map(|p| match &p.link {
+                    Some(link) => format!("- {}: {}", p.name, link),
+                    None => format!("- {}", p.name),
+                })
+                .collect();
+            format!("\n\nProdukte:\n{}", product_lines.join("\n"))
         } else {
             "".to_string()
         };
