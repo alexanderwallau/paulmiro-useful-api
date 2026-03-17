@@ -123,6 +123,7 @@ in
     systemd.services.useful-api-updater = {
       description = "Update useful-api git repository and rebuild";
       wants = [ "useful-api-initial-setup.service" ];
+      onSuccess = "useful-api-restarter.service";
       path = [
         pkgs.git
         pkgs.nix
@@ -151,7 +152,6 @@ in
             exit 1
           fi
         '';
-        OnSuccess = "useful-api-restarter.service";
       };
     };
 
