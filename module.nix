@@ -65,7 +65,7 @@ in
         fi
         if [ ! -e result ]; then
           ${nixBuildCommand}
-          mv -f result-new result
+          mv -f -T result-new result
         fi
       '';
       serviceConfig = {
@@ -138,7 +138,7 @@ in
             git pull --rebase --force
             cd ..
             ${nixBuildCommand}
-            mv -f result-new result
+            mv -f -T result-new result
           else
             echo "Already up to date."
           fi
